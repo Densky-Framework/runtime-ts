@@ -7,7 +7,7 @@ type RequestHandler = (
   conn: Deno.Conn,
 ) => Promisable<Response>;
 
-export class Server extends BaseServer {
+export class DevServer extends BaseServer {
   constructor(
     options: BaseServerOptions,
     readonly requestHandler: RequestHandler,
@@ -16,6 +16,9 @@ export class Server extends BaseServer {
   }
 
   async handleRequest(req: HTTPRequest, conn: Deno.Conn) {
+    if (req.pathname === "/$/dev") {
+      return new Response("Updated!", { status: 200 });
+    }
     return await this.requestHandler(req, conn);
   }
 }
