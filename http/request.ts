@@ -6,10 +6,18 @@ type Accumulator = {
   readonly path: string;
 };
 
+export type RequestSerialized = {
+  url: string;
+  headers: [string, string][];
+  method: string;
+  a: ArrayBuffer;
+};
+
 export class HTTPRequest {
-  readonly raw: Request;
+  // readonly raw: Request;
   readonly method: HTTPMethodStr;
   readonly headers: Headers;
+  readonly reqHeaders: Headers;
   readonly cookies: Cookies;
 
   readonly url: URL;
@@ -26,13 +34,19 @@ export class HTTPRequest {
 
   private _prepared = false;
 
-  constructor(readonly event: Deno.RequestEvent) {
-    this.raw = event.request;
-    this.method = this.raw.method as HTTPMethodStr;
+  constructor(raw: Request | RequestSerialized) {
+    this.method = raw.method as HTTPMethodStr;
     this.headers = new Headers();
-    this.cookies = new Cookies(this.raw.headers, this.headers);
+    if (!(raw instanceof Request)) {
+      const rawHeaders = new Headers(raw.headers);
+      this.reqHeaders = rawHeaders;
+      this.cookies = new Cookies(rawHeaders, this.headers);
+    } else {
+      this.reqHeaders = raw.headers;
+      this.cookies = new Cookies(raw.headers, this.headers);
+    }
 
-    this.url = new URL(this.raw.url);
+    this.url = new URL(raw.url);
     this.pathname = this.url.pathname;
 
     // By Parts
@@ -61,5 +75,15 @@ export class HTTPRequest {
 
     await this.cookies.parse();
     this._prepared = true;
+  }
+
+  static async prepareForWorker(req: Deno.RequestEvent) {
+    const raw = req.request;
+    return {
+      url: raw.url,
+      headers: [...raw.headers.entries()],
+      method: raw.method.toUpperCase(),
+      a: await raw.arrayBuffer(),
+    };
   }
 }
