@@ -6,13 +6,6 @@ type Accumulator = {
   readonly path: string;
 };
 
-export type RequestSerialized = {
-  url: string;
-  headers: [string, string][];
-  method: string;
-  a: ArrayBuffer;
-};
-
 export class HTTPRequest {
   // readonly raw: Request;
   readonly method: HTTPMethodStr;
@@ -34,17 +27,11 @@ export class HTTPRequest {
 
   private _prepared = false;
 
-  constructor(raw: Request | RequestSerialized) {
+  constructor(readonly raw: Request) {
     this.method = raw.method as HTTPMethodStr;
     this.headers = new Headers();
-    if (!(raw instanceof Request)) {
-      const rawHeaders = new Headers(raw.headers);
-      this.reqHeaders = rawHeaders;
-      this.cookies = new Cookies(rawHeaders, this.headers);
-    } else {
-      this.reqHeaders = raw.headers;
-      this.cookies = new Cookies(raw.headers, this.headers);
-    }
+    this.reqHeaders = raw.headers;
+    this.cookies = new Cookies(raw.headers, this.headers);
 
     this.url = new URL(raw.url);
     this.pathname = this.url.pathname;
@@ -75,15 +62,5 @@ export class HTTPRequest {
 
     await this.cookies.parse();
     this._prepared = true;
-  }
-
-  static async prepareForWorker(req: Deno.RequestEvent) {
-    const raw = req.request;
-    return {
-      url: raw.url,
-      headers: [...raw.headers.entries()],
-      method: raw.method.toUpperCase(),
-      a: await raw.arrayBuffer(),
-    };
   }
 }

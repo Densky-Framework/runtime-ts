@@ -46,7 +46,8 @@ export class HTTPError {
     error: Error,
     statusCode: number | StatusCode = StatusCode.INTERNAL_ERR,
   ): HTTPError {
-    console.error(color.red`[HTTP ${statusCode}] ` + error.message);
+    // console.error(color.red`[HTTP ${statusCode}] ` + error.message);
+    console.error(color.red`[HTTP ${statusCode}]`,error);
 
     return new HTTPError(statusCode, error.message)
       .withName(error.name)

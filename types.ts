@@ -1,3 +1,4 @@
+import type { HTTPRequest } from "densky/mod.ts";
 export type { BaseServerOptions } from "./server/BaseServer.ts";
 
 export type CompileOptions = {
@@ -147,3 +148,12 @@ export type HTTPMethodStr =
   | "PATH"
   | "OPTIONS"
   | "ANY";
+
+export type Entry = (req: HTTPRequest) => Promisable<Response | undefined>;
+export interface EntryController {
+  default?: Entry;
+  GET?: Entry;
+  POST?: Entry;
+  DELETE?: Entry;
+  PATCH?: Entry;
+}
