@@ -7,9 +7,10 @@ type Accumulator = {
 };
 
 export class HTTPRequest {
-  readonly raw: Request;
+  // readonly raw: Request;
   readonly method: HTTPMethodStr;
   readonly headers: Headers;
+  readonly reqHeaders: Headers;
   readonly cookies: Cookies;
 
   readonly url: URL;
@@ -26,13 +27,13 @@ export class HTTPRequest {
 
   private _prepared = false;
 
-  constructor(readonly event: Deno.RequestEvent) {
-    this.raw = event.request;
-    this.method = this.raw.method as HTTPMethodStr;
+  constructor(readonly raw: Request) {
+    this.method = raw.method as HTTPMethodStr;
     this.headers = new Headers();
-    this.cookies = new Cookies(this.raw.headers, this.headers);
+    this.reqHeaders = raw.headers;
+    this.cookies = new Cookies(raw.headers, this.headers);
 
-    this.url = new URL(this.raw.url);
+    this.url = new URL(raw.url);
     this.pathname = this.url.pathname;
 
     // By Parts
