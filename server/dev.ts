@@ -1,12 +1,18 @@
 import { relative as relativePath } from "https://deno.land/std@0.190.0/path/mod.ts";
 import { Globals } from "../global.ts";
+import { stripPrefix } from "../utils.ts";
 import { log, log_error } from "../log.ts";
 import { HTTPRequest, HTTPResponse } from "../runtime.ts";
 import type { CompileOptions, EntryController } from "../types.ts";
 import { BaseServer, BaseServerOptions } from "./BaseServer.ts";
 import { join } from "https://deno.land/std@0.190.0/path/posix.ts";
 
-type ManifestResolver = (req: HTTPRequest) => string | null;
+type ControllerResolved = {
+  middlewares: Array<string>;
+  fallbacks: Array<string>;
+  controller: string;
+};
+type ManifestResolver = (req: HTTPRequest) => ControllerResolved | null;
 
 export class DevServer extends BaseServer {
   lastId = 0;
@@ -26,6 +32,7 @@ export class DevServer extends BaseServer {
   }
 
   importWithoutCache(url: string): Promise<unknown> {
+    log("./" + stripPrefix(url, Globals.cwd), "CACHE", "import");
     return import(
       "file://" + url + "?k=" +
         (Math.random() * 16000 | 0).toString(32)
@@ -71,14 +78,34 @@ export class DevServer extends BaseServer {
       return (new Response("Updated!", { status: 200 }));
     }
 
-    const controllerPath = this.manifestResolver!(req);
-    if (controllerPath == null) {
+    const resolvedController = this.manifestResolver!(req);
+    if (resolvedController == null) {
       return new Response("Not Found", { status: 404 });
     }
 
-    const controller = await this.importController(controllerPath);
+    for (const middleware of resolvedController.middlewares) {
+      const out = await this.handleController(middleware, req);
+      if (out) return out;
+    }
+
+    for (const fallback of resolvedController.fallbacks) {
+      const out = await this.handleController(fallback, req);
+      if (out) return out;
+    }
+
+    const out = await this.handleController(resolvedController.controller, req);
+    if (out) return out;
+
+    return new Response("Not found", { status: 404 });
+  }
+
+  async handleController(
+    path: string,
+    req: HTTPRequest,
+  ): Promise<Response | null> {
+    const controller = await this.importController(path);
     if (!controller) {
-      return new Response("Controller doesn't exist: " + controllerPath, {
+      return new Response("Controller doesn't exist: " + path, {
         status: 500,
       });
     }
@@ -87,6 +114,10 @@ export class DevServer extends BaseServer {
       controller.default;
     if (!entry) return new Response("Method not implemented", { status: 402 });
 
-    return await entry(req) ?? new Response("Not found", { status: 404 });
+    await req.prepare();
+    const out = await entry(req);
+    if (out == null) return null;
+
+    return HTTPResponse.toResponse(req, out);
   }
 }
