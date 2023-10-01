@@ -1,8 +1,9 @@
+import { HTTPRequest } from "../mod.ts";
 import { Promisable } from "../types.ts";
 import { BaseServer, BaseServerOptions } from "./BaseServer.ts";
 
 type RequestHandler = (
-  request: Deno.RequestEvent,
+  request: HTTPRequest,
   conn: Deno.Conn,
 ) => Promisable<Response>;
 
@@ -14,7 +15,7 @@ export class Server extends BaseServer {
     super(options);
   }
 
-  async handleRequest(req: Deno.RequestEvent, conn: Deno.Conn) {
+  async handleRequest(req: HTTPRequest, conn: Deno.Conn) {
     return await this.requestHandler(req, conn);
   }
 }

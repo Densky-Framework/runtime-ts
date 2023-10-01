@@ -1,11 +1,10 @@
-// import type { Promisable } from "../common.ts";
 import { HTTPError } from "../http/error.ts";
 import version from "../version.ts";
 import { Globals } from "../global.ts";
 import color from "../colors.ts";
 import { Promisable } from "../types.ts";
 
-import { log } from "../log.ts";
+import { HTTPRequest } from "../http/request.ts";
 
 export type BaseServerOptions = Parameters<typeof Deno.listen>[0] & {
   verbose?: boolean;
@@ -48,8 +47,8 @@ export abstract class BaseServer {
 
   async start() {
     for await (const conn of this.server) {
-      log("New Connection", "HTTP");
-      this.handleConnection(conn).catch((_) => conn.close());
+      // log("New Connection", "HTTP");
+      this.handleConnection(conn).finally(() => conn.close()).catch((_) => {});
     }
   }
 
@@ -63,7 +62,8 @@ export abstract class BaseServer {
   async handleConnection(conn: Deno.Conn): Promise<void> {
     for await (const request of Deno.serveHttp(conn)) {
       try {
-        const handled = this.handleRequest(request, conn);
+        const req = new HTTPRequest(request.request);
+        const handled = this.handleRequest(req, conn);
 
         // Handle Async
         if (typeof handled === "object" && "catch" in handled) {
@@ -85,7 +85,7 @@ export abstract class BaseServer {
   }
 
   abstract handleRequest(
-    request: Deno.RequestEvent,
+    request: HTTPRequest,
     conn: Deno.Conn,
   ): Promisable<Response>;
 }
