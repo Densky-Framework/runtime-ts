@@ -1,4 +1,4 @@
-import type { HTTPRequest } from "densky/mod.ts";
+import type { HTTPRequest } from "./http/request.ts";
 export type { BaseServerOptions } from "./server/BaseServer.ts";
 
 export type CompileOptions = {
@@ -11,17 +11,8 @@ export type CompileOptions = {
   verbose?: boolean;
 };
 
-export type UrlSerial = {
-  isVar: false;
-  raw: string;
-} | {
-  isVar: true;
-  raw: string;
-  varname: string;
-};
-
 export type Promisable<T> = Promise<T> | T;
-export type Awaited<T> = T extends Promise<infer R> ? R : never;
+export type Awaited<T> = T extends Promise<infer R> ? R : T;
 
 export type PrimitiveObject = {
   [x: string | number]: PrimitiveObject | string | number | boolean | undefined;
