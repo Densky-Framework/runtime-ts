@@ -1,8 +1,9 @@
 export class Globals {
-  static _startTime = performance.now();
-  static cwd: string;
+  static readonly _startTime = performance.now();
+  static readonly cwd: string;
 }
 
 export function setCWD(cwd: string) {
+  // @ts-expect-error READONLY property
   Globals.cwd = cwd;
 }

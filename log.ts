@@ -1,4 +1,117 @@
-import colors from "./colors.ts";
+import colors, { EnchantedColor } from "./colors.ts";
+
+export interface LoggerOptions {
+  // FIXME: JSDOC
+  defaultColor?: EnchantedColor;
+
+  // FIXME: EXAMPLE
+  /** Minimum level to show the log */
+  level?: LoggerLevel;
+
+  /**
+   * Show a text before each log
+   *
+   * @example
+   * ```typescript
+   * import { colors, Logger } from "densky/plugin.ts";
+   *
+   * const logger = new Logger("logger", {
+   *   prefix: colors.red`[SEE THIS]`
+   * });
+   *
+   * logger.info("Hello World");
+   * // -> [SEE THIS] [logger]  INFO  Hello World
+   * ```
+   */
+  prefix?: string;
+}
+
+export enum LoggerLevel {
+  AUTO = "auto",
+  DEBUG = "debug",
+  INFO = "info",
+  SUCCESS = "success",
+  WARN = "warn",
+  ERROR = "error",
+}
+
+const loggerLevel = {
+  [LoggerLevel.AUTO]: -1,
+  [LoggerLevel.DEBUG]: 0,
+  [LoggerLevel.INFO]: 1,
+  [LoggerLevel.SUCCESS]: 2,
+  [LoggerLevel.WARN]: 3,
+  [LoggerLevel.ERROR]: 4,
+};
+
+export class Logger {
+  // Options
+  readonly defaultColor: EnchantedColor;
+  readonly level: LoggerLevel;
+  readonly prefix: string;
+
+  constructor(readonly moduleName: string, options?: LoggerOptions) {
+    this.defaultColor = options?.defaultColor ?? colors.reset;
+    this.level = options?.level ?? LoggerLevel.AUTO;
+    this.prefix = options?.prefix ?? "";
+  }
+
+  private mustLog(level: LoggerLevel): boolean {
+    if (loggerLevel[level] > loggerLevel[this.level]) {
+      return true;
+    }
+
+    return false;
+  }
+
+  private log(level: LoggerLevel, color: EnchantedColor, ...data: unknown[]) {
+    if (!this.mustLog(level)) return;
+
+    const label = color(colors.bold(level.toUpperCase()));
+
+    const ts = colors.dim(timestamp());
+
+    // {TS} {PREFIX} {MODULE} {LABEL} ...message
+    const prefix = [
+      ts,
+      this.prefix,
+      colors.cyan(colors.bold(this.moduleName)),
+      label,
+    ]
+      .filter(Boolean)
+      .join(
+        " ",
+      );
+
+    const message = data.map((v) =>
+      typeof v === "string"
+        ? v.replaceAll("\n", "\n" + " ".repeat(prefix.length + 1))
+        : v
+    );
+
+    console.log(prefix, ...message);
+  }
+
+  debug(...data: unknown[]) {
+    this.log(LoggerLevel.DEBUG, colors.blue, ...data);
+  }
+
+  info(...data: unknown[]) {
+    this.log(LoggerLevel.INFO, colors.cyan, ...data);
+  }
+
+  success(...data: unknown[]) {
+    this.log(LoggerLevel.SUCCESS, colors.green, ...data);
+  }
+
+  warn(...data: unknown[]) {
+    this.log(LoggerLevel.WARN, colors.yellow, ...data);
+  }
+
+  error(...data: unknown[]) {
+    this.log(LoggerLevel.ERROR, colors.red, ...data);
+  }
+}
 
 export function timestamp(): string {
   return new Date().toLocaleTimeString([], {
@@ -9,57 +122,4 @@ export function timestamp(): string {
   });
 }
 
-export function formatLog(
-  msg: string,
-  label?: string | null,
-  sub?: string | null,
-  noTimestamp?: boolean,
-): string {
-  const ts = noTimestamp ? "" : colors.dim(timestamp());
-  const l = label ? colors.cyan(label) : "";
-  const s = sub ? colors.green(sub) : "";
-
-  const lg = [ts, colors.cyan(colors.bold("DENSKY")), l, s, msg].filter(Boolean)
-    .join(
-      " ",
-    );
-
-  return " " + lg;
-}
-
-export function log(
-  msg: string,
-  label?: string | null,
-  sub?: string | null,
-  noTimestamp?: boolean,
-): void {
-  console.log(formatLog(msg, label, sub, noTimestamp));
-}
-
-export const makeLog = (
-  verbose: boolean,
-  rawStr: string,
-  color: typeof colors[keyof typeof colors],
-) => {
-  return verbose
-    ? (...data: unknown[]) =>
-      console.log(
-        color(rawStr),
-        ...data.map((v) =>
-          typeof v === "string"
-            ? v.replaceAll("\n", "\n" + " ".repeat(rawStr.length + 1))
-            : v
-        ),
-      )
-    : (..._: unknown[]) => {};
-};
-
-export type MakeLogFn = ReturnType<typeof makeLog>;
-
-export const makeLog_info = (verbose: boolean): MakeLogFn =>
-  makeLog(verbose, "[INFO]", colors.cyan);
-export const makeLog_success_v = (verbose: boolean): MakeLogFn =>
-  makeLog(verbose, "[INFO] ", colors.green);
-export const log_success: MakeLogFn = makeLog(true, "", colors.green);
-export const log_error: MakeLogFn = makeLog(true, "[ERROR]", colors.red);
-export const log_warn: MakeLogFn = makeLog(true, "[WARN]", colors.yellow);
+export const logger = new Logger("DENSKY");

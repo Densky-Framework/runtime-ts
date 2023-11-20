@@ -1,3 +1,4 @@
+// deno-lint-ignore-file no-explicit-any
 import * as __colors from "https://deno.land/std@0.187.0/fmt/colors.ts";
 
 const {
@@ -23,8 +24,9 @@ function colors(s: TemplateStringsArray | unknown, ...args: unknown[]): string {
   }
 }
 
-type EnchantedColors = {
-  [s in keyof _Colors]: typeof colors;
+export type EnchantedColor = typeof colors;
+export type EnchantedColors = {
+  [s in keyof _Colors]: EnchantedColor;
 };
 
 const $colors = Object.entries(_colors).reduce((p, a) => {
